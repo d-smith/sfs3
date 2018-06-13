@@ -1,0 +1,63 @@
+service: iotauth
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+  environment:
+    ROLE_NAME: iotauthRole-${self:provider.stage}
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - 'iot:DescribeEndpoint'
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - 'sts:AssumeRole'
+      Resource: "*"
+
+functions:
+  auth:
+    handler: handler.auth
+    events:
+      - http: GET iot/keys
+
+
+resources:
+  Resources:
+    processStartRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName:
+          Fn::Join: [ '-', ['iotauthRole',  '${self:provider.stage}' ]]
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              AWS:
+                Fn::Join: [ '', ['arn:aws:iam::', Ref: 'AWS::AccountId', ':root']]
+            Action:
+            - sts:AssumeRole
+        Path: "/"
+        Policies:
+        - PolicyName: iot
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - iot:Connect
+              - iot:Subscribe
+              - iot:Publish
+              - iot:Receive
+              Resource:
+                - 'Fn::Join':
+                  - ''
+                  -
+                    - 'arn:aws:iot:'
+                    - Ref: "AWS::Region"
+                    - ':'
+                    - Ref: "AWS::AccountId"
+                    - ":topic/processa-"
+                    - ${self:provider.stage}
+                    - '/*'
