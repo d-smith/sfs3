@@ -1,0 +1,41 @@
+service: downstream
+
+provider:
+  name: aws
+  runtime: nodejs8.10
+    
+
+functions:
+  downstreamA:
+    handler: downstream.A
+  downstreamB:
+    handler: downstream.B
+  downstreamC:
+    handler: downstream.C
+
+
+stepFunctions:
+  stateMachines:
+    DownstreamProcess:
+      name: downstream-${opt:stage}
+      definition:
+        Comment: 'downstream process invoked from hellostepfunc1'
+        StartAt:
+          downstream-a
+        States:
+          downstream-a:
+            Type: Task
+            Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-downstreamA"
+            Next: downstream-b
+          downstream-b:
+            Type: Task
+            Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-downstreamB"
+            Next: downstream-c
+          downstream-c:
+            Type: Task
+            Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-downstreamC"
+            End: true
+
+plugins:
+  - serverless-step-functions
+  - serverless-pseudo-parameters

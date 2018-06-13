@@ -1,0 +1,17 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "description": "",
+  "main": "client.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.256.1",
+    "biguint-format": "^1.0.0",
+    "flake-idgen": "^1.1.0",
+    "proxy-agent": "^3.0.0"
+  }
+}

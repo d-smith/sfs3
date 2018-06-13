@@ -1,0 +1,13 @@
+{
+  "name": "s3processdata",
+  "description": "",
+  "version": "0.1.0",
+  "dependencies": {
+    "biguint-format": "^1.0.0",
+    "flake-idgen": "^1.1.0"
+  },
+  "devDependencies": {
+    "serverless-pseudo-parameters": "^1.6.0",
+    "serverless-step-functions": "^1.4.1"
+  }
+}
