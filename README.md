@@ -58,6 +58,7 @@ It will look like `arn:aws:states:us-east-1:<your account no>:stateMachine:Proce
 Finally, invoke the client:
 
 ````console
+npm install
 node client <stage-machine-arn>
 ````
 
