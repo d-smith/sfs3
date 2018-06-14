@@ -7,7 +7,7 @@ provider:
     BUCKET_NAME: ${self:custom.bucketName}
     STEP_FN_ARN: "arn:aws:states:#{AWS::Region}:#{AWS::AccountId}:stateMachine:ProcessA-${self:provider.stage}"
     DOWNSTREAM_ARN: ${cf:downstream-${self:provider.stage}.DownstreamDash${self:provider.stage}Arn}
-
+    TOPIC_ROOT: processa-${self:provider.stage}/
 custom:
   bucketName: ds97068processinput-${self:provider.stage}
 
@@ -180,6 +180,34 @@ resources:
                       - Ref: "AWS::AccountId"
                       - ":stateMachine:downstream-"
                       - ${self:provider.stage}
+        - PolicyName: iot
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - iot:Publish
+              Resource:
+                - 'Fn::Join':
+                  - ''
+                  -
+                    - 'arn:aws:iot:'
+                    - Ref: "AWS::Region"
+                    - ':'
+                    - Ref: "AWS::AccountId"
+                    - ":topic/processa-"
+                    - ${self:provider.stage}
+                    - '/*'
+        - PolicyName: iotdesc
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - iot:Connect
+              - iot:DescribeEndpoint
+              Resource: '*'
+
         - PolicyName: s3
           PolicyDocument:
             Version: '2012-10-17'

@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const S3 = new AWS.S3();
 const stepFunctions = new AWS.StepFunctions();
-
+const IOT = new AWS.Iot();
 const readInputDataString = async (key) => {
     let params = {
         Bucket: process.env.BUCKET_NAME,
@@ -22,7 +22,7 @@ const writeBodyObj = async(key, body) => {
         Bucket: process.env.BUCKET_NAME
     };
 
-    s3response = await S3.putObject(putParams).promise();
+    let s3response = await S3.putObject(putParams).promise();
     console.log(s3response);
     return s3response;
 }
@@ -102,6 +102,27 @@ const kickOffDownstream = async (downstreamInput) => {
     return result;
 }
 
+const doNotification = async (key,msg) => {
+    let desc = await IOT.describeEndpoint({}).promise();
+    console.log(`iot endpoint desc: ${desc}`);
+
+    let endpoint = desc['endpointAddress'];
+    console.log(`endpoint address: ${endpoint}`);
+
+    let iotdata = new AWS.IotData({endpoint: endpoint});
+
+    topic = process.env.TOPIC_ROOT + key
+    console.log(`publish to topic ${topic}`)
+
+    let params = {
+        topic: topic,
+        payload: msg
+    };
+
+    let pubResult = await iotdata.publish(params).promise();
+    console.log('pub results: ${JSON.stringify(pubResult)}');
+}
+
 module.exports.stepF = async (event, context, callback) => {
     console.log(`event: ${JSON.stringify(event)})`);
 
@@ -123,6 +144,8 @@ module.exports.stepF = async (event, context, callback) => {
         downstreamExecutionArn: result['executionArn']
     }
     await writeBodyObj(key, processData);
+
+    await doNotification(key, 'done');
 
     callback(null, event);
 }
