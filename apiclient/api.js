@@ -1,16 +1,31 @@
 const express = require('express');
+const timeout = require('connect-timeout');
 const app = express();
 const rp = require('request-promise-native');
 const awsIot = require('aws-iot-device-sdk');
 
-var appIotCtx = {};
 
+// Stick the express response objects in a map, so we can
+// lookup and complete the response when the process state
+// is published.
+let txnToResponseMap = {};
+
+// Subscription message available. Currently we get callbacks
+// for all messages, but we can refine this later.
 const onMessage = (topic, message) => {
     console.log(`message ${message} for topic ${topic}`);
-    lastRes.send(message);
+    let txnId = topic.split('/')[1];
+    let response = txnToResponseMap[txnId];
+    
+    if(response != undefined) {
+        response.send('Ok');
+        delete txnToResponseMap[topic];
+    }
+    
 } 
 
-const subResult = async () => {
+// Connect to the IOT endpoint and subscribe to the topic.
+const subscribeForResult = async (appIotCtx) => {
     console.log(JSON.stringify(appIotCtx));
     console.log('form client');
     client = awsIot.device({
@@ -30,14 +45,9 @@ const subResult = async () => {
     });
 
     client.on('message', onMessage);
-
-   
-
-
 }
 
-var lastRes = {};
-
+// Start the state machine execution
 const callStepFunc = async (res) => {
     let options = {
         method: 'POST',
@@ -50,14 +60,21 @@ const callStepFunc = async (res) => {
     let callResult = await rp(options);
     console.log(callResult);
 
-    lastRes = res;
+    txnToResponseMap[callResult['transactionId']] = res;
 }
+
+// Set up a timeout for this sample app - your timeout may be 
+// different
+app.use(timeout(20*1000));
+app.use(haltOnTimeout);
+
+// Sample endpoint to initiate the step function process
+// and the communication back of the response.
 app.post('/p1', function (req, res) {
     callStepFunc(res);
-
-    //res.send('Got a POST request')
   });
 
+// Initialize the credentials for invoking the IOT service
 const initCreds = async () => {
     let options = {
         method: 'GET',
@@ -67,15 +84,17 @@ const initCreds = async () => {
     let callResult = await rp(options);
     console.log(callResult);
 
-    appIotCtx = callResult;
+    return callResult;
     
 }
 
-
+function haltOnTimeout(req, res, next) {
+    if (!req.timedout) next();
+}
 
 const doInit = async () => {
-    await initCreds();
-    subResult();
+    let appIotCtx = await initCreds();
+    subscribeForResult(appIotCtx);
 
    app.listen(3000, () => console.log('Example app listening on port 3000!'))
 }
