@@ -18,7 +18,11 @@ const onMessage = (topic, message) => {
     let response = txnToResponseMap[txnId];
     
     if(response != undefined) {
-        response.send('Ok');
+        if(message == 'SUCCEEDED') {
+            response.send(message);
+        } else {
+            response.status(400).send(message);
+        }
         delete txnToResponseMap[topic];
     }
     

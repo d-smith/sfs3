@@ -51,6 +51,8 @@ const doStep = async (outputKey, result, event, context, callback) => {
 }
 
 module.exports.stepA = async (event, context, callback) => {
+    let key = event['processData'];
+
     //Write output to object
     let result = {
         status: 'ok',
@@ -60,7 +62,13 @@ module.exports.stepA = async (event, context, callback) => {
         stepAOutput3: 123
     };
 
-    await doStep('step-a-output', result, event, context, callback);
+    try {
+        await doStep('step-a-output', result, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(key, 'FAILED');
+        throw theError;
+    }
 }
 
 module.exports.stepB = async (event, context, callback) => {
@@ -72,8 +80,13 @@ module.exports.stepB = async (event, context, callback) => {
         property2: 'p2',
     };
 
-    await doStep('step-b-output', result, event, context, callback);
- 
+    try {
+        await doStep('step-b-output', result, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(key, 'FAILED');
+        throw theError;
+    }
 }
 
 module.exports.stepC = async (event, context, callback) => {
@@ -82,14 +95,32 @@ module.exports.stepC = async (event, context, callback) => {
         cProperty: 'i like c'
     };
 
-    await doStep('step-c-output',result, event, context, callback);
+    try {
+        await doStep('step-c-output',result, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(key, 'FAILED');
+        throw theError;
+    }
 }
 
 module.exports.stepD = async (event, context, callback) => {
-    await doStep('step-d-output',{d: 'd output'}, event, context, callback);
+    try {
+        await doStep('step-d-output',{d: 'd output'}, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(key, 'FAILED');
+        throw theError;
+    }
 }
 module.exports.stepE = async (event, context, callback) => {
-    await doStep('step-e-output',{e: 'e output'}, event, context, callback);
+    try {
+        await doStep('step-e-output',{e: 'e output'}, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(key, 'FAILED');
+        throw theError;
+    }
 }
 
 const kickOffDownstream = async (downstreamInput) => {
@@ -134,18 +165,24 @@ module.exports.stepF = async (event, context, callback) => {
     // we are reading the output from the previous step before we proceed! Ignoring
     // this for now... DO NOT REUSE THIS YET!
     //
-    let input = await readInputDataString(key);
-    console.log(`input: ${input}`);
-    let processData = JSON.parse(input);
+    try {
+        let input = await readInputDataString(key);
+        console.log(`input: ${input}`);
+        let processData = JSON.parse(input);
 
-    let result = await kickOffDownstream(JSON.stringify(event));
-    console.log(result);
-    processData['step-f-output'] = {
-        downstreamExecutionArn: result['executionArn']
+        let result = await kickOffDownstream(JSON.stringify(event));
+        console.log(result);
+        processData['step-f-output'] = {
+            downstreamExecutionArn: result['executionArn']
+        }
+        await writeBodyObj(key, processData);
+
+        await doNotification(key, 'SUCCEEDED');
+
+        callback(null, event);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(key, 'FAILED');
+        throw theError;
     }
-    await writeBodyObj(key, processData);
-
-    await doNotification(key, 'done');
-
-    callback(null, event);
 }
