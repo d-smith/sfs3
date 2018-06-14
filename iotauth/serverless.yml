@@ -40,15 +40,38 @@ resources:
             - sts:AssumeRole
         Path: "/"
         Policies:
-        - PolicyName: iot
+        - PolicyName: iotconnect
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
             - Effect: Allow
               Action:
               - iot:Connect
+              Resource: '*'
+        - PolicyName: iotsub
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
               - iot:Subscribe
-              - iot:Publish
+              Resource:
+                - 'Fn::Join':
+                  - ''
+                  -
+                    - 'arn:aws:iot:'
+                    - Ref: "AWS::Region"
+                    - ':'
+                    - Ref: "AWS::AccountId"
+                    - ":topicfilter/processa-"
+                    - ${self:provider.stage}
+                    - '/*'
+        - PolicyName: iotsrecv
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
               - iot:Receive
               Resource:
                 - 'Fn::Join':
@@ -61,3 +84,4 @@ resources:
                     - ":topic/processa-"
                     - ${self:provider.stage}
                     - '/*'
+
