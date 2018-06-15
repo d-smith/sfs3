@@ -19,26 +19,32 @@ functions:
       - http: POST start-process
   stepA:
     handler: aprocess.stepA
+    timeout: 10
     role:
       stepRole
   stepB:
     handler: aprocess.stepB
+    timeout: 10
     role:
       stepRole
   stepC:
     handler: aprocess.stepC
+    timeout: 10
     role:
       stepRole
   stepD:
     handler: aprocess.stepD
+    timeout: 10
     role:
       stepRole
   stepE:
     handler: aprocess.stepE
+    timeout: 10
     role:
       stepRole
   stepF:
     handler: aprocess.stepF
+    timeout: 10
     role:
       stepRole
 
@@ -55,26 +61,32 @@ stepFunctions:
           step-a:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepA"
+            TimeoutSeconds: 11
             Next: step-b
           step-b:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepB"
+            TimeoutSeconds: 11
             Next: step-c
           step-c:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepC"
+            TimeoutSeconds: 11
             Next: step-d
           step-d:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepD"
+            TimeoutSeconds: 11
             Next: step-e
           step-e:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepE"
+            TimeoutSeconds: 11
             Next: step-f
           step-f:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepF"
+            TimeoutSeconds: 11
             End: true
 
 

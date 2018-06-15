@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Template to create a monitoring dashboard for my step functions
+
+Resources:
+  MyDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: ProcessA-Dev
+      DashboardBody:
+        !Sub
+          - |-
+            {
+              "widgets":[
+                {
+                  "type":"metric",
+                  "properties": {
+                    "metrics":[[
+                      "AWS/States",
+                      "ExecutionsStarted",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ]],
+                    "title":"Executions Started",
+                    "region":"${region}",
+                    "stat":"Sum"
+                  }
+                },
+                {
+                  "type":"metric",
+                  "properties": {
+                    "metrics":[[
+                      "AWS/States",
+                      "ExecutionsAborted",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ],[
+                    
+                      "AWS/States",
+                      "ExecutionFailed",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ],[
+                    
+                      "AWS/States",
+                      "ExecutionsTimedout",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ]
+                    ],
+                    "title":"Execution Problems",
+                    "region":"${region}",
+                    "stat":"Sum"
+                  }
+                }
+              ]
+            }
+          - { account: !Ref "AWS::AccountId", region: !Ref "AWS::Region" }
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Template to create a monitoring dashboard for my step functions
+
+Resources:
+  MyDashboard:
+    Type: AWS::CloudWatch::Dashboard
+    Properties:
+      DashboardName: ProcessA-Dev
+      DashboardBody:
+        !Sub
+          - |-
+            {
+              "widgets":[
+                {
+                  "type":"metric",
+                  "properties": {
+                    "metrics":[[
+                      "AWS/States",
+                      "ExecutionsStarted",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ]],
+                    "title":"Executions Started",
+                    "region":"${region}",
+                    "stat":"Sum"
+                  }
+                },
+                {
+                  "type":"metric",
+                  "properties": {
+                    "metrics":[[
+                      "AWS/States",
+                      "ExecutionsSucceeded",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ]],
+                    "title":"Executions Succeeded",
+                    "region":"${region}",
+                    "stat":"Sum"
+                  }
+                },
+                {
+                  "type":"metric",
+                  "properties": {
+                    "metrics":[[
+                      "AWS/States",
+                      "ExecutionTime",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ]],
+                    "title":"Execution Time",
+                    "region":"${region}",
+                    "stat":"Average"
+                  }
+                },
+                {
+                  "type":"metric",
+                  "properties": {
+                    "metrics":[[
+                      "AWS/States",
+                      "ExecutionsAborted",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ],[
+                    
+                      "AWS/States",
+                      "ExecutionFailed",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ],[
+                    
+                      "AWS/States",
+                      "ExecutionsTimedout",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ],[
+                    
+                      "AWS/States",
+                      "ExecutionThrottled",
+                      "StateMachineArn",
+                      "arn:aws:states:us-east-1:${account}:stateMachine:ProcessA-dev"
+                    ]
+                    ],
+                    "title":"Execution Problems",
+                    "region":"${region}",
+                    "stat":"Sum"
+                  }
+                }
+              ]
+            }
+          - { account: !Ref "AWS::AccountId", region: !Ref "AWS::Region" }
