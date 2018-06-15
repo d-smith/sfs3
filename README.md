@@ -137,6 +137,11 @@ aws stepfunctions list-state-machines
 
 It will look like `arn:aws:states:us-east-1:<your account no>:stateMachine:ProcessA-<the stage>`
 
+## Monitoring Dashboad
+
+For a basic Cloud Watch dashboard that displays state metrics
+for the process defined in the `s3-for-process-data` project, install the dashboard defined in `dashboard.yml`. You can use the `install-dashboard.sh` script to do so.
+
 ## Execution Creation and Subscription for Completion
 
 The `apiclient` directory contains a sample that shows how to create an execution of a step functions state machine, and how to subscribe for notifiation on completion of the state machine.
