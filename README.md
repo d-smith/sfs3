@@ -7,6 +7,30 @@ with steps that read data from s3 and write data to s3. Keeping the
 data in s3 allows us the leverage s3 encryption, bucket policies,
 bucket lifecycle management, versioning, replication etc.
 
+The following diagram shows all the pieces in the solution.
+
+![Solution diagram](./step-fn-client-notification.jpg)
+
+The solution is centered around invoking a step function state machine to orchestrate a sequence of tasks and the initiation of another state machine. The `s3-for-process-data` and `downstream` subdirectories contain serverless functions and their associated task lambdas.
+
+The `s3-for-process-data` project includes the state machine definition, the associated lambdas, and a 'start process' API method to allow kicking off the step function state machine via an HTTP POST. This project uses s3 to store all state machine data to avoid data size limitations and to have more capabilities to secure the data. The task lambas publish events related to state machine completion to an Iot topic formed using the base topic, any subtopic specified by the initiator of the execution, and the transaction id associated with the state machine execution.
+
+For clients that want to know when the state machine initiated via an API call completes, there are two alternatives, polling for completion using the AWS APIs, or via subscribing for events.
+
+For event pub/sub, IoT was selected based on its simplicity and its fit for purpose, namely notifying a single interested party about the completion of a state machine. For events related to the process implemented in the state machine in aggregate, since all state machine data is stored in an s3 object side car, a lambda function could be subscribed to s3 bucket events, which could then form events and write them to a Kinesis stream.
+
+To enable connectivity to the IoT message broker without requiring AWS account credentials, the `iotauth` project exposes a service to return the iot endpoint, and temporary credentials that map to a role that allows connectivity to the iot endpoint, and the permission to subscribe to and receive events for a topic namespace.
+
+### Cost Components
+
+Refer to the AWS pricing documentation for the latest pricing and a more nuanced discussion, especially if you are looking to apply this pattern where a lot of external data transfer is involved.
+
+* API gateway - currently $3.50 per million API calls received, plus data transfer out which is $0.09 per GB for the first 10 TB, getting cheaper after that.
+* Lambda - currently free for the first 1 Million requests per month, then $0.20 per 1 million requests after that. Additionally there is a duration charge based on execution time and the amount of memory allocated, where the first 400,000 GB-seconds per month are free, and $0.00001667 per GB-seconds used thereafter.
+* Step functions - varies by region but roughly $0.0250 per 1,000 state transitions.
+* Iot - varies per region. In the US, connectivity pricing is $0.08 per 1 million minutes of connectivity. Messaging is based on messages transported to (e.g. publish) IoT Core, and from (e.g. receive) IoT core. In the US, the first 1 billion messages in a month cost $1.00.
+* S3 - varies by region, but in the US it's roughly $0.023 per GB for the first 50 TB / month.
+
 ## Caveats
 
 As a general note, this is a project that illustrates how to accomplish things using AWS, but does not represent a production hardened configuration.
