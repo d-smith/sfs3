@@ -1,7 +1,7 @@
 const AWS = require('aws-sdk');
 const S3 = new AWS.S3();
 const stepFunctions = new AWS.StepFunctions();
-
+const IOT = new AWS.Iot();
 const readInputDataString = async (key) => {
     let params = {
         Bucket: process.env.BUCKET_NAME,
@@ -22,7 +22,7 @@ const writeBodyObj = async(key, body) => {
         Bucket: process.env.BUCKET_NAME
     };
 
-    s3response = await S3.putObject(putParams).promise();
+    let s3response = await S3.putObject(putParams).promise();
     console.log(s3response);
     return s3response;
 }
@@ -51,6 +51,8 @@ const doStep = async (outputKey, result, event, context, callback) => {
 }
 
 module.exports.stepA = async (event, context, callback) => {
+    let key = event['processData'];
+
     //Write output to object
     let result = {
         status: 'ok',
@@ -60,7 +62,13 @@ module.exports.stepA = async (event, context, callback) => {
         stepAOutput3: 123
     };
 
-    await doStep('step-a-output', result, event, context, callback);
+    try {
+        await doStep('step-a-output', result, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(event, 'FAILED');
+        throw theError;
+    }
 }
 
 module.exports.stepB = async (event, context, callback) => {
@@ -72,8 +80,13 @@ module.exports.stepB = async (event, context, callback) => {
         property2: 'p2',
     };
 
-    await doStep('step-b-output', result, event, context, callback);
- 
+    try {
+        await doStep('step-b-output', result, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(event, 'FAILED');
+        throw theError;
+    }
 }
 
 module.exports.stepC = async (event, context, callback) => {
@@ -82,14 +95,32 @@ module.exports.stepC = async (event, context, callback) => {
         cProperty: 'i like c'
     };
 
-    await doStep('step-c-output',result, event, context, callback);
+    try {
+        await doStep('step-c-output',result, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(event, 'FAILED');
+        throw theError;
+    }
 }
 
 module.exports.stepD = async (event, context, callback) => {
-    await doStep('step-d-output',{d: 'd output'}, event, context, callback);
+    try {
+        await doStep('step-d-output',{d: 'd output'}, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(event, 'FAILED');
+        throw theError;
+    }
 }
 module.exports.stepE = async (event, context, callback) => {
-    await doStep('step-e-output',{e: 'e output'}, event, context, callback);
+    try {
+        await doStep('step-e-output',{e: 'e output'}, event, context, callback);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(event, 'FAILED');
+        throw theError;
+    }
 }
 
 const kickOffDownstream = async (downstreamInput) => {
@@ -100,6 +131,37 @@ const kickOffDownstream = async (downstreamInput) => {
 
     let result = await stepFunctions.startExecution(params).promise();
     return result;
+}
+
+const doNotification = async (event,msg) => {
+    let key = event['processData'];
+
+    let desc = await IOT.describeEndpoint({}).promise();
+    console.log(`iot endpoint desc: ${desc}`);
+
+    let endpoint = desc['endpointAddress'];
+    console.log(`endpoint address: ${endpoint}`);
+
+    let iotdata = new AWS.IotData({endpoint: endpoint});
+
+    let topicRoot = process.env.TOPIC_ROOT;
+    let subtopic = event['subtopic'];
+    console.log(`topicRoot is ${topicRoot}, subtopic is ${subtopic}`);
+
+    if(subtopic != undefined) {
+        topicRoot += event['subtopic'] + '/';
+    }
+
+    let topic = topicRoot + key;
+    console.log(`publish to topic ${topic}`)
+
+    let params = {
+        topic: topic,
+        payload: msg
+    };
+
+    let pubResult = await iotdata.publish(params).promise();
+    console.log('pub results: ${JSON.stringify(pubResult)}');
 }
 
 module.exports.stepF = async (event, context, callback) => {
@@ -113,16 +175,24 @@ module.exports.stepF = async (event, context, callback) => {
     // we are reading the output from the previous step before we proceed! Ignoring
     // this for now... DO NOT REUSE THIS YET!
     //
-    let input = await readInputDataString(key);
-    console.log(`input: ${input}`);
-    let processData = JSON.parse(input);
+    try {
+        let input = await readInputDataString(key);
+        console.log(`input: ${input}`);
+        let processData = JSON.parse(input);
 
-    let result = await kickOffDownstream(JSON.stringify(event));
-    console.log(result);
-    processData['step-f-output'] = {
-        downstreamExecutionArn: result['executionArn']
+        let result = await kickOffDownstream(JSON.stringify(event));
+        console.log(result);
+        processData['step-f-output'] = {
+            downstreamExecutionArn: result['executionArn']
+        }
+        await writeBodyObj(key, processData);
+
+        await doNotification(event, 'SUCCEEDED');
+
+        callback(null, event);
+    } catch(theError) {
+        console.log(theError);
+        await doNotification(event, 'FAILED');
+        throw theError;
     }
-    await writeBodyObj(key, processData);
-
-    callback(null, event);
 }

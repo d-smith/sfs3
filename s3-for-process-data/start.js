@@ -30,6 +30,8 @@ module.exports.startProcess = async (event, context, callback) => {
     if (inputPayload == undefined) {
         inputPayload = '{}';
     }
+
+    let inputObj = JSON.parse(inputPayload);
     
     let params = {
         Body: inputPayload,
@@ -46,7 +48,15 @@ module.exports.startProcess = async (event, context, callback) => {
         callback(null, {statusCode: 500, body: 'Error capturing process input'});
     }
 
-    let startProcResponse = await startProcess(JSON.stringify({processData: txnId}));
+
+    
+    processInput = {};
+    processInput['processData'] = txnId;
+    if(inputObj['subtopic'] != undefined) {
+        processInput['subtopic'] = inputObj['subtopic'];
+    }
+
+    let startProcResponse = await startProcess(JSON.stringify(processInput));
     console.log(startProcResponse);
 
     let responseBody = {

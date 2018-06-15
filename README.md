@@ -9,14 +9,19 @@ bucket lifecycle management, versioning, replication etc.
 
 ## Caveats
 
+As a general note, this is a project that illustrates how to accomplish things using AWS, but does not represent a production hardened configuration.
+
+### S3 Read Consistency
+
 The current version does that the s3 read contains the data from the previous step - it is possible a read does not return the most recent
 copy of the object based on the [S3 consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel)
 
-This will be addressed in a later version of this sample.
 
-Also note the client sample is a polling model - this will also be updated to use events to convey completion the status.
+### IotAuth
 
-## Try it out
+The IotAuth endpoint is currently not secured - this will be remediated soon. Until it is secured anyone can call the endpoint and obtain credentials to consumer events published to the topic...
+
+## Deployment
 
 Using the sample assumes you've got the [serverless framework](https://serverless.com/) installed.
 
@@ -54,6 +59,45 @@ aws stepfunctions list-state-machines
 ````
 
 It will look like `arn:aws:states:us-east-1:<your account no>:stateMachine:ProcessA-<the stage>`
+
+## Execution Creation and Subscription for Completion
+
+The `apiclient` directory contains a sample that shows how to create an execution of a step functions state machine, and how to subscribe for notifiation on completion of the state machine.
+
+To run, first install the iotauth service.
+
+````console
+cd iotauth
+npm install
+sls deploy --aws-profile <your profile>
+````
+
+With all the services installed, cd into the apiclient directory and set the following environment variables:
+
+* TOPIC - set to the name of the topic the state machine step function is publishing to.
+* START_ENDPOINT - the endpoint exposed by the s3-for-process-data service, available via `sls info`
+* IOTAUTH_ENDPOINT - the endpoint exposed by the iotauth service, available via `sls info`
+
+Once the envrionment variables are set, run the proces.
+
+````console
+npm install
+node api.js
+`````
+
+You can then curl the endpoint to see the kick off and notification in action.
+
+````console
+curl -i -X POST localhost:3000/p1
+````
+
+In this example, including a subtopic property in the input that corresponds to the topic subscribed to in the process  set up narrows the set of notifications the process will need to handle. Without a subtopic then all events published to the topic will be received.
+
+## Polling Client
+
+The `client` directory contains an implementation of a AWS SDK client
+that creates a step function execution, then polls the state of the 
+execution until is is no longer in a running state.
 
 Finally, invoke the client:
 
