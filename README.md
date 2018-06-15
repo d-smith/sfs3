@@ -40,6 +40,59 @@ As a general note, this is a project that illustrates how to accomplish things u
 The current version does that the s3 read contains the data from the previous step - it is possible a read does not return the most recent
 copy of the object based on the [S3 consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel)
 
+## aws-iot-device-sdk proxy support
+
+The current (as of world cup 2018 match day 2) SDK does not support connecting to the IoT endpoint via an http(s) proxy. There is an [active issue and pull request](https://github.com/aws/aws-iot-device-sdk-js/pull/214/files), and a fix that works with a simple proxy server can be applied to the SDK after you `npm install` it as follows:
+
+First, replace the contents of device/lib/ws.js with this:
+
+````console
+const url = require('url');
+const HttpsProxyAgent = require('https-proxy-agent');
+const websocket = require('websocket-stream');
+ 
+
+const proxy = process.env.http_proxy;
+const proxy_usr = process.env.http_proxy_username;
+const proxy_psw = process.env.http_proxy_password;
+ 
+
+function buildBuilder(client, opts) {
+   if(proxy) {
+        console.log('using proxy server %j', proxy);
+        var options = url.parse(proxy);
+        if(proxy_usr && proxy_psw) {
+            console.log('using proxy username & password');
+            options.auth = proxy_usr + ':' + proxy_psw;
+        }
+
+        var agent = new HttpsProxyAgent(options);
+        opts.websocketOptions.agent = agent;
+    }
+    else
+        console.log('http_proxy is not defined. create web socket without proxy');
+
+    return websocket(opts.url, ['mqttv3.1'], opts.websocketOptions);
+}   
+
+module.exports = buildBuilder;
+````
+
+Next, update the dependencies in the SDK's package.json to add the following:
+
+````console
+"https-proxy-agent": "2.2.1",
+"url": "0.11.0"
+`````
+
+Then, in the `apiclient` directory:
+
+````console
+npm install https-proxy-agent
+````
+
+You can then set the proxy in your environment variables via `http_proxy` - use the full http://host:port form.
+
 
 ### IotAuth
 
