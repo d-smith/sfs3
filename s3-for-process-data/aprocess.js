@@ -66,7 +66,7 @@ module.exports.stepA = async (event, context, callback) => {
         await doStep('step-a-output', result, event, context, callback);
     } catch(theError) {
         console.log(theError);
-        await doNotification(key, 'FAILED');
+        await doNotification(event, 'FAILED');
         throw theError;
     }
 }
@@ -84,7 +84,7 @@ module.exports.stepB = async (event, context, callback) => {
         await doStep('step-b-output', result, event, context, callback);
     } catch(theError) {
         console.log(theError);
-        await doNotification(key, 'FAILED');
+        await doNotification(event, 'FAILED');
         throw theError;
     }
 }
@@ -99,7 +99,7 @@ module.exports.stepC = async (event, context, callback) => {
         await doStep('step-c-output',result, event, context, callback);
     } catch(theError) {
         console.log(theError);
-        await doNotification(key, 'FAILED');
+        await doNotification(event, 'FAILED');
         throw theError;
     }
 }
@@ -109,7 +109,7 @@ module.exports.stepD = async (event, context, callback) => {
         await doStep('step-d-output',{d: 'd output'}, event, context, callback);
     } catch(theError) {
         console.log(theError);
-        await doNotification(key, 'FAILED');
+        await doNotification(event, 'FAILED');
         throw theError;
     }
 }
@@ -118,7 +118,7 @@ module.exports.stepE = async (event, context, callback) => {
         await doStep('step-e-output',{e: 'e output'}, event, context, callback);
     } catch(theError) {
         console.log(theError);
-        await doNotification(key, 'FAILED');
+        await doNotification(event, 'FAILED');
         throw theError;
     }
 }
@@ -133,7 +133,9 @@ const kickOffDownstream = async (downstreamInput) => {
     return result;
 }
 
-const doNotification = async (key,msg) => {
+const doNotification = async (event,msg) => {
+    let key = event['processData'];
+
     let desc = await IOT.describeEndpoint({}).promise();
     console.log(`iot endpoint desc: ${desc}`);
 
@@ -142,7 +144,15 @@ const doNotification = async (key,msg) => {
 
     let iotdata = new AWS.IotData({endpoint: endpoint});
 
-    topic = process.env.TOPIC_ROOT + key
+    let topicRoot = process.env.TOPIC_ROOT;
+    let subtopic = event['subtopic'];
+    console.log(`topicRoot is ${topicRoot}, subtopic is ${subtopic}`);
+
+    if(subtopic != undefined) {
+        topicRoot += event['subtopic'] + '/';
+    }
+
+    let topic = topicRoot + key;
     console.log(`publish to topic ${topic}`)
 
     let params = {
@@ -177,12 +187,12 @@ module.exports.stepF = async (event, context, callback) => {
         }
         await writeBodyObj(key, processData);
 
-        await doNotification(key, 'SUCCEEDED');
+        await doNotification(event, 'SUCCEEDED');
 
         callback(null, event);
     } catch(theError) {
         console.log(theError);
-        await doNotification(key, 'FAILED');
+        await doNotification(event, 'FAILED');
         throw theError;
     }
 }

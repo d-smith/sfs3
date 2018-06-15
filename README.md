@@ -16,8 +16,6 @@ As a general note, this is a project that illustrates how to accomplish things u
 The current version does that the s3 read contains the data from the previous step - it is possible a read does not return the most recent
 copy of the object based on the [S3 consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel)
 
-### Subscription Notification Scope
-Also note the subscription notification example receives notifications for all topics, not the subset of executions created by a particular process. This will be updated to narrow the set of callbacks to just those of interest.
 
 ### IotAuth
 
@@ -92,6 +90,8 @@ You can then curl the endpoint to see the kick off and notification in action.
 ````console
 curl -i -X POST localhost:3000/p1
 ````
+
+In this example, including a subtopic property in the input that corresponds to the topic subscribed to in the process  set up narrows the set of notifications the process will need to handle. Without a subtopic then all events published to the topic will be received.
 
 ## Polling Client
 

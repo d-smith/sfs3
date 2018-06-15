@@ -4,6 +4,12 @@ const app = express();
 const rp = require('request-promise-native');
 const awsIot = require('aws-iot-device-sdk');
 
+//To avoid processing notifications for every item published
+//to the step function topic we'll specify a subtopic. We
+//use the subtopic in our subscription set up and in 
+//input to the state machine process.
+const subtopic = 'worker1'
+
 
 // Stick the express response objects in a map, so we can
 // lookup and complete the response when the process state
@@ -14,7 +20,10 @@ let txnToResponseMap = {};
 // for all messages, but we can refine this later.
 const onMessage = (topic, message) => {
     console.log(`message ${message} for topic ${topic}`);
-    let txnId = topic.split('/')[1];
+
+    let topicParts = topic.split('/');
+    let txnId = topicParts[topicParts.length -1 ];
+    console.log(`txnid in callback: ${txnId}`);
     let response = txnToResponseMap[txnId];
     
     if(response != undefined) {
@@ -42,7 +51,7 @@ const subscribeForResult = async (appIotCtx) => {
         host: appIotCtx['iotEndpoint']
     });
 
-    client.subscribe(process.env.TOPIC + '/#');
+    client.subscribe(process.env.TOPIC + '/' + subtopic + '/#');
 
     client.on('connect', function() {
         console.log('connect');
@@ -57,7 +66,8 @@ const callStepFunc = async (res) => {
         method: 'POST',
         uri: process.env.START_ENDPOINT,
         body: {
-            a: 'a stuff'
+            a: 'a stuff',
+            subtopic: subtopic
         },
         json:true
     };
