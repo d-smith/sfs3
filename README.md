@@ -99,7 +99,7 @@ The `client` directory contains an implementation of a AWS SDK client
 that creates a step function execution, then polls the state of the 
 execution until is is no longer in a running state.
 
-Finally, invoke the client:
+To invoke the client:
 
 ````console
 npm install

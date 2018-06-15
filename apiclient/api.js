@@ -16,8 +16,7 @@ const subtopic = 'worker1'
 // is published.
 let txnToResponseMap = {};
 
-// Subscription message available. Currently we get callbacks
-// for all messages, but we can refine this later.
+// Callback invoked when there's an event on the topic to process.
 const onMessage = (topic, message) => {
     console.log(`message ${message} for topic ${topic}`);
 
