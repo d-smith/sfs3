@@ -13,7 +13,12 @@ The following diagram shows all the pieces in the solution.
 
 The solution is centered around invoking a step function state machine to orchestrate a sequence of tasks and the initiation of another state machine. The `s3-for-process-data` and `downstream` subdirectories contain serverless functions and their associated task lambdas.
 
-The `s3-for-process-data` project includes the state machine definition, the associated lambdas, and a 'start process' API method to allow kicking off the step function state machine via an HTTP POST. This project uses s3 to store all state machine data to avoid data size limitations and to have more capabilities to secure the data. The task lambas publish events related to state machine completion to an Iot topic formed using the base topic, any subtopic specified by the initiator of the execution, and the transaction id associated with the state machine execution.
+The `s3-for-process-data` project includes the state machine definition, the associated lambdas, and a 'start process' API method to allow kicking off the step function state machine via an HTTP POST. This project uses s3 to store all state machine data to avoid data size limitations and to have more capabilities to secure the data. 
+
+Note when using s3 in this way you need to account for the [S3 
+consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel). In the sample code we include a read-predicate and retry count for each step to ensure the previous step's data has been read prior to proceeding.
+
+The task lambas publish events related to state machine completion to an Iot topic formed using the base topic, any subtopic specified by the initiator of the execution, and the transaction id associated with the state machine execution.
 
 For clients that want to know when the state machine initiated via an API call completes, there are two alternatives, polling for completion using the AWS APIs, or via subscribing for events.
 
@@ -35,12 +40,8 @@ Refer to the AWS pricing documentation for the latest pricing and a more nuanced
 
 As a general note, this is a project that illustrates how to accomplish things using AWS, but does not represent a production hardened configuration.
 
-### S3 Read Consistency
 
-The current version does that the s3 read contains the data from the previous step - it is possible a read does not return the most recent
-copy of the object based on the [S3 consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel)
-
-## aws-iot-device-sdk proxy support
+### aws-iot-device-sdk proxy support
 
 The current (as of world cup 2018 match day 2) SDK does not support connecting to the IoT endpoint via an http(s) proxy. There is an [active issue and pull request](https://github.com/aws/aws-iot-device-sdk-js/pull/214/files), and a fix that works with a simple proxy server can be applied to the SDK after you `npm install` it as follows:
 

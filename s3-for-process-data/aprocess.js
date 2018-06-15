@@ -2,16 +2,31 @@ const AWS = require('aws-sdk');
 const S3 = new AWS.S3();
 const stepFunctions = new AWS.StepFunctions();
 const IOT = new AWS.Iot();
-const readInputDataString = async (key) => {
+
+
+const readInputDataJSON = async (key, predicate, retries) => {
     let params = {
         Bucket: process.env.BUCKET_NAME,
         Key: key
     };
+    
+    if(retries < 1) {
+        retries = 1;
+    }
 
-    let s3response = await S3.getObject(params).promise();
-    console.log(s3response);
+    for(i=0; i < retries; i++) {
+        let s3response = await S3.getObject(params).promise();
+        console.log(s3response);
 
-    return s3response['Body'].toString();
+        inputJSON = JSON.parse(s3response['Body'].toString());
+        if(predicate(inputJSON)) {
+            return inputJSON;
+        }
+
+        console.log(`consistency predicate failed on try ${i} - retry`);
+    }
+    
+    throw new Error(`Unable to satisfy consistency predicate in ${retries} attempts`);
 }
 
 const writeBodyObj = async(key, body) => {
@@ -27,21 +42,15 @@ const writeBodyObj = async(key, body) => {
     return s3response;
 }
 
-const doStep = async (outputKey, result, event, context, callback) => {
+const doStep = async (outputKey, inputPredicate, result, event, context, callback) => {
     console.log(`doStep for ${outputKey}`);
     console.log(`event: ${JSON.stringify(event)})`);
 
     let key = event['processData'];
     console.log(`process data via key ${key}`);
 
-    //
-    // TODO/WARNING - due to the s3 consistency model, we need to test to make sure
-    // we are reading the output from the previous step before we proceed! Ignoring
-    // this for now... DO NOT REUSE THIS YET!
-    //
-    let input = await readInputDataString(key);
-    console.log(`input: ${input}`);
-    let processData = JSON.parse(input);
+    let processData = await readInputDataJSON(key, inputPredicate, 3);
+    console.log(`input: ${JSON.stringify(processData)}`);
     
     processData[outputKey] = result;
     await writeBodyObj(key, processData);
@@ -63,7 +72,7 @@ module.exports.stepA = async (event, context, callback) => {
     };
 
     try {
-        await doStep('step-a-output', result, event, context, callback);
+        await doStep('step-a-output', stepAInputPredicate, result, event, context, callback);
     } catch(theError) {
         console.log(theError);
         await doNotification(event, 'FAILED');
@@ -81,7 +90,7 @@ module.exports.stepB = async (event, context, callback) => {
     };
 
     try {
-        await doStep('step-b-output', result, event, context, callback);
+        await doStep('step-b-output', stepBInputPredicate, result, event, context, callback);
     } catch(theError) {
         console.log(theError);
         await doNotification(event, 'FAILED');
@@ -96,7 +105,7 @@ module.exports.stepC = async (event, context, callback) => {
     };
 
     try {
-        await doStep('step-c-output',result, event, context, callback);
+        await doStep('step-c-output',stepCInputPredicate, result, event, context, callback);
     } catch(theError) {
         console.log(theError);
         await doNotification(event, 'FAILED');
@@ -106,7 +115,7 @@ module.exports.stepC = async (event, context, callback) => {
 
 module.exports.stepD = async (event, context, callback) => {
     try {
-        await doStep('step-d-output',{d: 'd output'}, event, context, callback);
+        await doStep('step-d-output', stepDInputPredicate, {d: 'd output'}, event, context, callback);
     } catch(theError) {
         console.log(theError);
         await doNotification(event, 'FAILED');
@@ -115,7 +124,7 @@ module.exports.stepD = async (event, context, callback) => {
 }
 module.exports.stepE = async (event, context, callback) => {
     try {
-        await doStep('step-e-output',{e: 'e output'}, event, context, callback);
+        await doStep('step-e-output',stepEInputPredicate, {e: 'e output'}, event, context, callback);
     } catch(theError) {
         console.log(theError);
         await doNotification(event, 'FAILED');
@@ -137,7 +146,7 @@ const doNotification = async (event,msg) => {
     let key = event['processData'];
 
     let desc = await IOT.describeEndpoint({}).promise();
-    console.log(`iot endpoint desc: ${desc}`);
+    console.log(`iot endpoint desc: ${JSON.stringify(desc)}`);
 
     let endpoint = desc['endpointAddress'];
     console.log(`endpoint address: ${endpoint}`);
@@ -161,7 +170,7 @@ const doNotification = async (event,msg) => {
     };
 
     let pubResult = await iotdata.publish(params).promise();
-    console.log('pub results: ${JSON.stringify(pubResult)}');
+    console.log(`pub results: ${JSON.stringify(pubResult)}`);
 }
 
 module.exports.stepF = async (event, context, callback) => {
@@ -170,15 +179,9 @@ module.exports.stepF = async (event, context, callback) => {
     let key = event['processData'];
     console.log(`process data via key ${key}`);
 
-    //
-    // TODO/WARNING - due to the s3 consistency model, we need to test to make sure
-    // we are reading the output from the previous step before we proceed! Ignoring
-    // this for now... DO NOT REUSE THIS YET!
-    //
     try {
-        let input = await readInputDataString(key);
-        console.log(`input: ${input}`);
-        let processData = JSON.parse(input);
+        let processData = await readInputDataJSON(key, stepFInputPredicate, 3);
+        console.log(`processData: ${JSON.stringify(processData)}`);
 
         let result = await kickOffDownstream(JSON.stringify(event));
         console.log(result);
@@ -196,3 +199,30 @@ module.exports.stepF = async (event, context, callback) => {
         throw theError;
     }
 }
+
+const stepAInputPredicate = (o) => {
+    return true;
+}
+
+const stepBInputPredicate = (o) => {
+    return o.hasOwnProperty('step-a-output');
+}
+
+const stepCInputPredicate = (o) => {
+    return o.hasOwnProperty('step-b-output');
+}
+
+const stepDInputPredicate = (o) => {
+    return o.hasOwnProperty('step-c-output');
+}
+
+const stepEInputPredicate = (o) => {
+    return o.hasOwnProperty('step-d-output');
+}
+
+const stepFInputPredicate = (o) => {
+    return o.hasOwnProperty('step-e-output');
+}
+
+
+
