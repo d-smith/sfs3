@@ -209,3 +209,10 @@ Note the `txnId` is the name of the object in the bucket. You can inspect the co
 $ aws s3 cp s3://ds97068processinput-dev/0x58fe985b67000000 -
 {"foo":"foo val","bar":"bar val","step-a-output":{"status":"ok","details":"nothing to share","stepAOutput1":"a1","stepAOutput2":false,"stepAOutput3":123},"step-b-output":{"property1":"p1","property2":"p2"},"step-c-output":{"cProperty":"i like c"},"step-d-output":{"d":"d output"},"step-e-output":{"e":"e output"},"step-f-output":{"downstreamExecutionArn":"arn:aws:states:us-east-1:012301230123:execution:downstream-dev:23d21f43-2ee1-461d-9573-52e4b5524d49"}}MACLB141705:sfs3
 ````
+
+## Next
+
+* Replace retry logic for failed consistency predicates with state machine retries.
+* Add a heart beat event from Iot core to consumers.
+* Add a polling back up to check for state machine completion should there be 
+connectivity issues to Iot core.
