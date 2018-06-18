@@ -16,9 +16,9 @@ The solution is centered around invoking a step function state machine to orches
 The `s3-for-process-data` project includes the state machine definition, the associated lambdas, and a 'start process' API method to allow kicking off the step function state machine via an HTTP POST. This project uses s3 to store all state machine data to avoid data size limitations and to have more capabilities to secure the data. 
 
 Note when using s3 in this way you need to account for the [S3 
-consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel). In the sample code we include a read-predicate and retry count for each step to ensure the previous step's data has been read prior to proceeding.
+consistency model](https://docs.aws.amazon.com/AmazonS3/latest/dev/Introduction.html#ConsistencyModel). In the sample code we include a read-predicate for each step to ensure the previous step's data has been read prior to proceeding. If the read predicate is not satisfied, a specific error is thrown indicating the failure, and step function error handling and retry specification is used to attempt the step again.
 
-The task lambas publish events related to state machine completion to an Iot topic formed using the base topic, any subtopic specified by the initiator of the execution, and the transaction id associated with the state machine execution.
+The task lambdas publish events related to state machine completion to an Iot topic formed using the base topic, any subtopic specified by the initiator of the execution, and the transaction id associated with the state machine execution.
 
 For clients that want to know when the state machine initiated via an API call completes, there are two alternatives, polling for completion using the AWS APIs, or via subscribing for events.
 
@@ -212,7 +212,6 @@ $ aws s3 cp s3://ds97068processinput-dev/0x58fe985b67000000 -
 
 ## Next
 
-* Replace retry logic for failed consistency predicates with state machine retries.
 * Add a heart beat event from Iot core to consumers.
 * Add a polling back up to check for state machine completion should there be 
 connectivity issues to Iot core.

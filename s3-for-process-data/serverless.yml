@@ -68,26 +68,56 @@ stepFunctions:
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepB"
             TimeoutSeconds: 11
             Next: step-c
+            Retry:
+            - ErrorEquals:
+              - S3DataPreconditionError
+              IntervalSeconds: 1
+              BackoffRate: 1
+              MaxAttempts: 3
           step-c:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepC"
             TimeoutSeconds: 11
             Next: step-d
+            Retry:
+            - ErrorEquals:
+              - S3DataPreconditionError
+              IntervalSeconds: 1
+              BackoffRate: 1
+              MaxAttempts: 3
           step-d:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepD"
             TimeoutSeconds: 11
             Next: step-e
+            Retry:
+            - ErrorEquals:
+              - S3DataPreconditionError
+              IntervalSeconds: 1
+              BackoffRate: 1
+              MaxAttempts: 3
           step-e:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepE"
             TimeoutSeconds: 11
             Next: step-f
+            Retry:
+            - ErrorEquals:
+              - S3DataPreconditionError
+              IntervalSeconds: 1
+              BackoffRate: 1
+              MaxAttempts: 3
           step-f:
             Type: Task
             Resource: "arn:aws:lambda:#{AWS::Region}:#{AWS::AccountId}:function:${self:service}-${opt:stage}-stepF"
             TimeoutSeconds: 11
             End: true
+            Retry:
+            - ErrorEquals:
+              - S3DataPreconditionError
+              IntervalSeconds: 1
+              BackoffRate: 1
+              MaxAttempts: 3
 
 
 resources:
