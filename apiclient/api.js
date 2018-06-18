@@ -8,7 +8,7 @@ const awsIot = require('aws-iot-device-sdk');
 //to the step function topic we'll specify a subtopic. We
 //use the subtopic in our subscription set up and in 
 //input to the state machine process.
-const subtopic = 'worker1'
+const subtopic = process.env.WORKER || 'worker1'
 
 
 // Stick the express response objects in a map, so we can
@@ -36,6 +36,41 @@ const onMessage = (topic, message) => {
     
 } 
 
+// Information event handlers for iot connection
+const registerInfoEventHandlers = (client) => {
+    client.on('connect', function(conack) {
+        console.log(`iot::connect - conack ${JSON.stringify(conack)}`);
+    });
+
+    client.on('reconnect', function() {
+        console.log('iot::reconnect');
+    });
+
+    client.on('close', function() {
+        console.log('iot::close');
+    });
+
+    client.on('offline', function() {
+        console.log('iot::offline');
+    });
+
+    client.on('error', function(err){
+        console.log(`iot::err ${err}`);
+    });
+
+    client.on('end', function() {
+        console.log('iot::end');
+    });
+
+    client.on('packetsend', function(packet){
+        console.log(`packet send: ${JSON.stringify(packet)}`);
+    });
+
+    client.on('packetreceive', function(packet){
+        console.log(`packet recv: ${JSON.stringify(packet)}`);
+    });
+}
+
 // Connect to the IOT endpoint and subscribe to the topic.
 const subscribeForResult = async (appIotCtx) => {
     console.log(JSON.stringify(appIotCtx));
@@ -47,15 +82,12 @@ const subscribeForResult = async (appIotCtx) => {
         secretKey: appIotCtx['secretKey'],
         sessionToken: appIotCtx['sessionToken'],
         port: 443,
-        host: appIotCtx['iotEndpoint']
+        host: appIotCtx['iotEndpoint'],
+        keepalive: 20
     });
 
     client.subscribe(process.env.TOPIC + '/' + subtopic + '/#');
-
-    client.on('connect', function() {
-        console.log('connect');
-    });
-
+    registerInfoEventHandlers(client);
     client.on('message', onMessage);
 }
 
@@ -109,7 +141,8 @@ const doInit = async () => {
     let appIotCtx = await initCreds();
     subscribeForResult(appIotCtx);
 
-   app.listen(3000, () => console.log('Example app listening on port 3000!'))
+    let port = process.env.PORT || 3000;
+    app.listen(port, () => console.log(`Example app listening on port ${port}`))
 }
 
 doInit();
