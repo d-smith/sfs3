@@ -3,30 +3,32 @@ const S3 = new AWS.S3();
 const stepFunctions = new AWS.StepFunctions();
 const IOT = new AWS.Iot();
 
+class S3DataPreconditionError extends Error {
+    constructor(...args) {
+        super(...args)
+        this.name = this.constructor.name;
+        Error.captureStackTrace(this, this.constructor);
+    }
+}
 
-const readInputDataJSON = async (key, predicate, retries) => {
+
+const readInputDataJSON = async (key, predicate) => {
     let params = {
         Bucket: process.env.BUCKET_NAME,
         Key: key
     };
-    
-    if(retries < 1) {
-        retries = 1;
+
+    let s3response = await S3.getObject(params).promise();
+    console.log(s3response);
+
+    inputJSON = JSON.parse(s3response['Body'].toString());
+    if(predicate(inputJSON)) {
+        return inputJSON;
     }
 
-    for(i=0; i < retries; i++) {
-        let s3response = await S3.getObject(params).promise();
-        console.log(s3response);
-
-        inputJSON = JSON.parse(s3response['Body'].toString());
-        if(predicate(inputJSON)) {
-            return inputJSON;
-        }
-
-        console.log(`consistency predicate failed on try ${i} - retry`);
-    }
+    console.log(`consistency predicate failed`);
     
-    throw new Error(`Unable to satisfy consistency predicate in ${retries} attempts`);
+    throw new S3DataPreconditionError(`Unable to satisfy consistency predicate`);
 }
 
 const writeBodyObj = async(key, body) => {
@@ -49,7 +51,7 @@ const doStep = async (outputKey, inputPredicate, result, event, context, callbac
     let key = event['processData'];
     console.log(`process data via key ${key}`);
 
-    let processData = await readInputDataJSON(key, inputPredicate, 3);
+    let processData = await readInputDataJSON(key, inputPredicate);
     console.log(`input: ${JSON.stringify(processData)}`);
     
     processData[outputKey] = result;
@@ -180,7 +182,7 @@ module.exports.stepF = async (event, context, callback) => {
     console.log(`process data via key ${key}`);
 
     try {
-        let processData = await readInputDataJSON(key, stepFInputPredicate, 3);
+        let processData = await readInputDataJSON(key, stepFInputPredicate);
         console.log(`processData: ${JSON.stringify(processData)}`);
 
         let result = await kickOffDownstream(JSON.stringify(event));
