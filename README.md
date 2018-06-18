@@ -138,7 +138,7 @@ aws stepfunctions list-state-machines
 
 It will look like `arn:aws:states:us-east-1:<your account no>:stateMachine:ProcessA-<the stage>`
 
-## Monitoring Dashboad
+## Monitoring Dashboard
 
 For a basic Cloud Watch dashboard that displays state metrics
 for the process defined in the `s3-for-process-data` project, install the dashboard defined in `dashboard.yml`. You can use the `install-dashboard.sh` script to do so.
@@ -176,6 +176,31 @@ curl -i -X POST localhost:3000/p1
 
 In this example, including a subtopic property in the input that corresponds to the topic subscribed to in the process  set up narrows the set of notifications the process will need to handle. Without a subtopic then all events published to the topic will be received.
 
+### IoT Core Connectivity
+
+The `keepalive` parameter in the iot device constructor controls how often the client pings the message broker. The default value is 300 seconds, which makes sense in the context of an edge device -- when using this from a server pinging more often would be appropriate. In this example we use a value of 20 seconds.
+
+When connectivity it interrupted, the client will attempt to reconnect, and will resume normal operation once the connection can be re-established.
+
+````console
+packet send: {"cmd":"pingreq"}
+iot::offline
+iot::err Error: premature close
+iot::close
+iot::reconnect
+packet send: {"cmd":"connect"}
+iot::err Error: getaddrinfo ENOTFOUND xxxx.iot.us-east-1.amazonaws.com xxxx.iot.us-east-1.amazonaws.com:443
+iot::close
+iot::reconnect
+packet send: {"cmd":"connect"}
+packet recv: {"cmd":"connack","retain":false,"qos":0,"dup":false,"length":2,"topic":null,"payload":null,"sessionPresent":false,"returnCode":0}
+iot::connect - conack {"cmd":"connack","retain":false,"qos":0,"dup":false,"length":2,"topic":null,"payload":null,"sessionPresent":false,"returnCode":0}
+packet send: {"cmd":"subscribe","subscriptions":[{"topic":"processa-dev/worker1/#","qos":0}],"qos":1,"retain":false,"dup":false,"messageId":52750}
+packet recv: {"cmd":"suback","retain":false,"qos":0,"dup":false,"length":3,"topic":null,"payload":null,"granted":[0],"messageId":52750}
+packet send: {"cmd":"pingreq"}
+packet recv: {"cmd":"pingresp","retain":false,"qos":0,"dup":false,"length":0,"topic":null,"payload":null}
+````
+
 ## Polling Client
 
 The `client` directory contains an implementation of a AWS SDK client
@@ -212,6 +237,5 @@ $ aws s3 cp s3://ds97068processinput-dev/0x58fe985b67000000 -
 
 ## Next
 
-* Add a heart beat event from Iot core to consumers.
 * Add a polling back up to check for state machine completion should there be 
 connectivity issues to Iot core.
