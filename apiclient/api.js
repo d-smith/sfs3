@@ -16,6 +16,19 @@ const subtopic = process.env.WORKER || 'worker1'
 // is published.
 let txnToResponseMap = {};
 
+// Fallback - if iot connection service fails, poll for 
+// state machine completion
+let pollForResults = false;
+
+const doPollForResults = () => {
+    if(pollForResults == false) {
+        return;
+    }
+
+    console.log('polling for results');
+    setTimeout(doPollForResults, 5000);
+}
+
 // Callback invoked when there's an event on the topic to process.
 const onMessage = (topic, message) => {
     console.log(`message ${message} for topic ${topic}`);
@@ -40,6 +53,7 @@ const onMessage = (topic, message) => {
 const registerInfoEventHandlers = (client) => {
     client.on('connect', function(conack) {
         console.log(`iot::connect - conack ${JSON.stringify(conack)}`);
+        pollForResults = false;
     });
 
     client.on('reconnect', function() {
@@ -52,6 +66,10 @@ const registerInfoEventHandlers = (client) => {
 
     client.on('offline', function() {
         console.log('iot::offline');
+        if(pollForResults == false) {
+            pollForResults = true;
+            doPollForResults();
+        }
     });
 
     client.on('error', function(err){
