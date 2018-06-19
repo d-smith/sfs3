@@ -66,3 +66,31 @@ module.exports.startProcess = async (event, context, callback) => {
 
     callback(null, {statusCode: 200, body: JSON.stringify(responseBody)});
 }
+
+module.exports.processState = async (event, context, callback) => {
+
+    let queryStringParams = event['queryStringParameters'];
+    if(queryStringParams == null) {
+        console.log("request missing query string parameters");
+        callback(null, {statusCode: 400});
+        return;
+    }
+
+    let executionArn = queryStringParams['executionArn'];
+    if(executionArn == undefined || executionArn == '') {
+        console.log('query parameters missing execution arn');
+        callback(null, {statusCode: 400});
+        return;
+    }
+
+    try {
+        let description = await stepFunctions.describeExecution({executionArn: executionArn}).promise();
+        let status = description['status'];
+        callback(null, {statusCode: 200, body: `{"status":"${status}"}`});
+    } catch(anError) {
+        console.log(anError);
+        callback(null, {statusCode: 400});
+    }
+
+    
+}

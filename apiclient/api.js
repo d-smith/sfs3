@@ -20,10 +20,18 @@ let txnToResponseMap = new Map();
 // state machine completion
 let pollForResults = false;
 
-const doPollForResults = () => {
+const checkStateForTxn = async (txn, resp) => {
+    
+}
+
+const doPollForResults = async () => {
     if(pollForResults == false) {
         return;
     }
+
+    txnToResponseMap.forEach((t,r)=> {
+        checkStateForTxn(t,r);
+    });
 
     console.log('polling for results');
     setTimeout(doPollForResults, 5000);
