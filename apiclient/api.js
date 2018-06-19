@@ -92,7 +92,7 @@ const doPollForResults = async () => {
     });
 
     console.log('polling for results');
-    setTimeout(doPollForResults, 15000);
+    setTimeout(doPollForResults, 5000);
 }
 
 const doPollTransitionResults = async() => {
