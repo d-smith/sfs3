@@ -20,17 +20,25 @@ let txnToResponseMap = new Map();
 // state machine completion
 let pollForResults = false;
 
-const headersSentForTransaction = (txnId, response) => {
+// When we toggle back from polling to events, there may be 
+// some results we are polling for that might complete during
+// the transition from polling back to events during the 
+// interval between the connection being re-establish followed
+// by subscriptions being restored. We use this map to
+// keep track of out standing requests during the transition.
+let transitionTxnsMap = new Map();
+
+const headersSentForTransaction = (txnId, response, txnMap) => {
     if(response.headersSent) {
         console.log(`headers sent for ${txnId} - most likely timed out`);
-        txnToResponseMap.delete(txnId);
+        txnMap.delete(txnId);
         return true;
     }
 
     return false;
 }
 
-const sendResponseBasedOnState = (state, txnId, response) => {
+const sendResponseBasedOnState = (state, txnId, response, txnMap) => {
     // When polling the state machine might still be running.
     if(state == 'RUNNING') {
         console.log('status is running - poll later');
@@ -45,13 +53,13 @@ const sendResponseBasedOnState = (state, txnId, response) => {
         response.status(400).send(state);
     }
 
-    txnToResponseMap.delete(txnId);
+    txnMap.delete(txnId);
 }
 
-const checkStateForTxn = async (txnId, executionArn, resp) => {
+const checkStateForTxn = async (txnId, txnMap, executionArn, resp) => {
     console.log(`checking state for execution ${executionArn}`);
 
-    if(headersSentForTransaction(txnId, resp)) {
+    if(headersSentForTransaction(txnId, resp, txnMap)) {
         return;
     }
 
@@ -67,7 +75,7 @@ const checkStateForTxn = async (txnId, executionArn, resp) => {
         console.log(`call result: ${JSON.stringify(callResult)}`);
 
         let state = callResult['status'];
-        sendResponseBasedOnState(state, txnId, resp);
+        sendResponseBasedOnState(state, txnId, resp, txnMap);
     } catch(err) {
         console.log(err.message);
     }
@@ -80,11 +88,26 @@ const doPollForResults = async () => {
     }
 
     txnToResponseMap.forEach((txnTuple, txnId)=> {
-        checkStateForTxn(txnId, txnTuple['executionArn'], txnTuple['response']);
+        checkStateForTxn(txnId, txnToResponseMap, txnTuple['executionArn'], txnTuple['response']);
     });
 
     console.log('polling for results');
-    setTimeout(doPollForResults, 5000);
+    setTimeout(doPollForResults, 15000);
+}
+
+const doPollTransitionResults = async() => {
+    if(transitionTxnsMap.size == 0) {
+        console.log('No transition results to process');
+        return;
+    }
+
+    transitionTxnsMap.forEach((txnTuple, txnId)=> {
+        console.log('poll transition event')
+        checkStateForTxn(txnId, transitionTxnsMap, txnTuple['executionArn'], txnTuple['response']);
+    });
+
+    console.log('polling for transition results');
+    setTimeout(doPollTransitionResults, 5000);
 }
 
 // Callback invoked when there's an event on the topic to process.
@@ -95,13 +118,17 @@ const onMessage = (topic, message) => {
     let txnId = topicParts[topicParts.length -1 ];
     console.log(`txnid in callback: ${txnId}`);
     let txnTuple = txnToResponseMap.get(txnId);
+    if(txnTuple == undefined) {
+        console.log(`no txn tuple for ${txnId} - transition event?`);
+        return;
+    }
     let response = txnTuple['response'];
 
-    if(headersSentForTransaction(txnId, response)) {
+    if(headersSentForTransaction(txnId, response, txnToResponseMap)) {
         return;
     }
     
-    sendResponseBasedOnState(message, txnId, response);
+    sendResponseBasedOnState(message, txnId, response, txnToResponseMap);
     
 } 
 
@@ -109,6 +136,12 @@ const onMessage = (topic, message) => {
 const registerInfoEventHandlers = (client) => {
     client.on('connect', function(conack) {
         console.log(`iot::connect - conack ${JSON.stringify(conack)}`);
+        if(txnToResponseMap.size > 0) {
+            console.log('Creating transition map');
+            transitionTxnsMap = new Map(txnToResponseMap);
+            txnToResponseMap = new Map();
+            doPollTransitionResults();
+        }
         pollForResults = false;
     });
 
@@ -184,7 +217,7 @@ const callStepFunc = async (res) => {
         executionArn: callResult['executionId'],
         timestamp: new Date().getTime()
     }
-    
+
     txnToResponseMap.set(callResult['transactionId'],tuple);
 }
 
