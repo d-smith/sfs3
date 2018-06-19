@@ -14,7 +14,7 @@ const subtopic = process.env.WORKER || 'worker1'
 // Stick the express response objects in a map, so we can
 // lookup and complete the response when the process state
 // is published.
-let txnToResponseMap = {};
+let txnToResponseMap = new Map();
 
 // Fallback - if iot connection service fails, poll for 
 // state machine completion
@@ -36,7 +36,7 @@ const onMessage = (topic, message) => {
     let topicParts = topic.split('/');
     let txnId = topicParts[topicParts.length -1 ];
     console.log(`txnid in callback: ${txnId}`);
-    let response = txnToResponseMap[txnId];
+    let response = txnToResponseMap.get(txnId);
     
     if(response != undefined) {
         if(message == 'SUCCEEDED') {
@@ -44,7 +44,7 @@ const onMessage = (topic, message) => {
         } else {
             response.status(400).send(message);
         }
-        delete txnToResponseMap[topic];
+        txnToResponseMap.delete(txnId);
     }
     
 } 
@@ -123,7 +123,7 @@ const callStepFunc = async (res) => {
     let callResult = await rp(options);
     console.log(callResult);
 
-    txnToResponseMap[callResult['transactionId']] = res;
+    txnToResponseMap.set(callResult['transactionId'],res);
 }
 
 // Set up a timeout for this sample app - your timeout may be 
