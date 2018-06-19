@@ -20,8 +20,58 @@ let txnToResponseMap = new Map();
 // state machine completion
 let pollForResults = false;
 
-const checkStateForTxn = async (txn, resp) => {
-    
+const headersSentForTransaction = (txnId, response) => {
+    if(response.headersSent) {
+        console.log(`headers sent for ${txnId} - most likely timed out`);
+        txnToResponseMap.delete(txnId);
+        return true;
+    }
+
+    return false;
+}
+
+const sendResponseBasedOnState = (state, txnId, response) => {
+    // When polling the state machine might still be running.
+    if(state == 'RUNNING') {
+        console.log('status is running - poll later');
+        return;
+    }
+
+    if(state == 'SUCCEEDED') {
+        console.log('response success');
+        response.send(state);
+    } else {
+        console.log('response failure');
+        response.status(400).send(state);
+    }
+
+    txnToResponseMap.delete(txnId);
+}
+
+const checkStateForTxn = async (txnId, executionArn, resp) => {
+    console.log(`checking state for execution ${executionArn}`);
+
+    if(headersSentForTransaction(txnId, resp)) {
+        return;
+    }
+
+    let options = {
+        method: 'GET',
+        uri: process.env.STATE_ENDPOINT + '?executionArn=' + executionArn,
+        json:true
+    };
+
+    try {
+        let callResult = await rp(options);
+
+        console.log(`call result: ${JSON.stringify(callResult)}`);
+
+        let state = callResult['status'];
+        sendResponseBasedOnState(state, txnId, resp);
+    } catch(err) {
+        console.log(err.message);
+    }
+
 }
 
 const doPollForResults = async () => {
@@ -29,8 +79,8 @@ const doPollForResults = async () => {
         return;
     }
 
-    txnToResponseMap.forEach((t,r)=> {
-        checkStateForTxn(t,r);
+    txnToResponseMap.forEach((txnTuple, txnId)=> {
+        checkStateForTxn(txnId, txnTuple['executionArn'], txnTuple['response']);
     });
 
     console.log('polling for results');
@@ -44,16 +94,14 @@ const onMessage = (topic, message) => {
     let topicParts = topic.split('/');
     let txnId = topicParts[topicParts.length -1 ];
     console.log(`txnid in callback: ${txnId}`);
-    let response = txnToResponseMap.get(txnId);
-    
-    if(response != undefined) {
-        if(message == 'SUCCEEDED') {
-            response.send(message);
-        } else {
-            response.status(400).send(message);
-        }
-        txnToResponseMap.delete(txnId);
+    let txnTuple = txnToResponseMap.get(txnId);
+    let response = txnTuple['response'];
+
+    if(headersSentForTransaction(txnId, response)) {
+        return;
     }
+    
+    sendResponseBasedOnState(message, txnId, response);
     
 } 
 
@@ -131,7 +179,13 @@ const callStepFunc = async (res) => {
     let callResult = await rp(options);
     console.log(callResult);
 
-    txnToResponseMap.set(callResult['transactionId'],res);
+    let tuple = {
+        response: res,
+        executionArn: callResult['executionId'],
+        timestamp: new Date().getTime()
+    }
+    
+    txnToResponseMap.set(callResult['transactionId'],tuple);
 }
 
 // Set up a timeout for this sample app - your timeout may be 
