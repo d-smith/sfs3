@@ -17,6 +17,11 @@ functions:
     role: processStartRole
     events:
       - http: POST start-process
+  processState:
+    handler: start.processState
+    role: processStateRole
+    events:
+      - http: GET process-state
   stepA:
     handler: aprocess.stepA
     timeout: 10
@@ -182,6 +187,47 @@ resources:
                     - Fn::GetAtt: [ ProcessInputBucket, Arn ]
                     - '*'
 
+    processStateRole:
+      Type: AWS::IAM::Role
+      Properties:
+        AssumeRolePolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+              - lambda.amazonaws.com
+              - edgelambda.amazonaws.com
+            Action:
+            - sts:AssumeRole
+        Path: "/"
+        Policies:
+        - PolicyName: logs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - logs:*
+              Resource: arn:aws:logs:*:*:*
+        - PolicyName: stepsfns
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+            - Effect: Allow
+              Action:
+              - "states:DescribeExecution"
+              Resource:
+                - 'Fn::Join':
+                    - ''
+                    -
+                      - "arn:aws:states:"
+                      - Ref: "AWS::Region"
+                      - ":"
+                      - Ref: "AWS::AccountId"
+                      - ":execution:ProcessA-"
+                      - ${self:provider.stage}
+                      - ':*'
     stepRole:
       Type: AWS::IAM::Role
       Properties:

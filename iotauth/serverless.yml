@@ -24,7 +24,7 @@ functions:
 
 resources:
   Resources:
-    processStartRole:
+    iotEventRole:
       Type: AWS::IAM::Role
       Properties:
         RoleName:
