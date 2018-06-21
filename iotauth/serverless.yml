@@ -3,6 +3,7 @@ service: iotauth
 provider:
   name: aws
   runtime: nodejs8.10
+  stage: ${opt:stage, 'dev'}
   environment:
     ROLE_NAME: iotauthRole-${self:provider.stage}
   iamRoleStatements:

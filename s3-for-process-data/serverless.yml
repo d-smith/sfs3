@@ -2,6 +2,7 @@ service: s3processdata
 
 provider:
   name: aws
+  stage: ${opt:stage, 'dev'}
   runtime: nodejs8.10
   environment:
     BUCKET_NAME: ${self:custom.bucketName}

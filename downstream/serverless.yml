@@ -2,6 +2,7 @@ service: downstream
 
 provider:
   name: aws
+  stage: ${opt:stage, 'dev'}
   runtime: nodejs8.10
     
 
